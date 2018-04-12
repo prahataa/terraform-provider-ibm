@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/hashicorp/terraform/flatmap"
+
 	"github.com/IBM-Bluemix/bluemix-go/api/container/containerv1"
 	"github.com/IBM-Bluemix/bluemix-go/api/iampap/iampapv1"
 	"github.com/IBM-Bluemix/bluemix-go/api/mccp/mccpv2"
@@ -161,7 +163,7 @@ func flattenServiceInstanceCredentials(keys []mccpv2.ServiceKeyFields) []interfa
 	for i, k := range keys {
 		m := make(map[string]interface{})
 		m["name"] = k.Entity.Name
-		m["credentials"] = flattenServiceKeyCredentials(k.Entity.Credentials)
+		m["credentials"] = flatmap.Flatten(k.Entity.Credentials)
 		out[i] = m
 	}
 	return out
@@ -663,13 +665,21 @@ func flattenGatewayMembers(d *schema.ResourceData, list []datatypes.Network_Gate
 	return members
 }
 
-func flattenDisks(blkDevices []datatypes.Virtual_Guest_Block_Device) []int {
+func flattenDisks(result datatypes.Virtual_Guest, d *schema.ResourceData) []int {
 	var out = make([]int, 0)
-	for _, v := range blkDevices {
+
+	for _, v := range result.BlockDevices {
 		// skip 1,7 which is reserved for the swap disk and metadata
-		if *v.Device != "1" && *v.Device != "7" {
-			out = append(out, *v.DiskImage.Capacity)
+		if _, ok := d.GetOk("flavor_key_name"); ok {
+			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" {
+				out = append(out, *v.DiskImage.Capacity)
+			}
+		} else {
+			if *v.Device != "1" && *v.Device != "7" {
+				out = append(out, *v.DiskImage.Capacity)
+			}
 		}
 	}
+
 	return out
 }

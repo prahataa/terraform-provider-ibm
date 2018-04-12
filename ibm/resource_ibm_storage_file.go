@@ -462,12 +462,17 @@ func resourceIBMStorageFileRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("snapshot_capacity", snapshotCapacity)
 	}
 
-	// Parse data center short name from ServiceResourceName. For example,
-	// if SoftLayer API returns "'serviceResourceName': 'PerfStor Aggr aggr_staasdal0601_p01'",
-	// the data center short name is "dal06".
-	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
-	d.Set("datacenter", strings.ToLower(r.FindString(*storage.ServiceResourceName)))
-
+	if storageType == nasType {
+		if storage.ServiceResource != nil {
+			d.Set("datacenter", *storage.ServiceResource.Datacenter.Name)
+		}
+	} else {
+		// Parse data center short name from ServiceResourceName. For example,
+		// if SoftLayer API returns "'serviceResourceName': 'PerfStor Aggr aggr_staasdal0601_p01'",
+		// the data center short name is "dal06".
+		r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
+		d.Set("datacenter", strings.ToLower(r.FindString(*storage.ServiceResourceName)))
+	}
 	// Read allowed_ip_addresses
 	allowedIpaddressesList := make([]string, 0, len(storage.AllowedIpAddresses))
 	for _, allowedIpaddress := range storage.AllowedIpAddresses {
